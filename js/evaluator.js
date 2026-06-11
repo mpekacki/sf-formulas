@@ -8,6 +8,8 @@
 
   function evaluate(ast, record, opts) {
     const blankAsZero = !!(opts && opts.blankAsZero);
+    const omni = !!(opts && opts.mode === 'omni');
+    const registry = omni ? window.SFOmniFunctions : window.SFFunctions;
     const results = new Map();
     // Node ids of branches picked by IF/CASE/BLANKVALUE/NULLVALUE,
     // so the UI can highlight which alternative produced the result.
@@ -36,7 +38,7 @@
       }
     }
 
-    const env = { eval: evalNode, evalSafe, blankAsZero, markChosen: node => chosen.add(node.id) };
+    const env = { eval: evalNode, evalSafe, blankAsZero, omni, markChosen: node => chosen.add(node.id) };
 
     function compute(node) {
       switch (node.type) {
@@ -59,28 +61,48 @@
       return Object.keys(obj).find(k => k.toLowerCase() === lower);
     }
 
+    const MISSING = Symbol('missing');
+
     function fieldValue(path) {
-      let cur = record;
-      if (Object.prototype.hasOwnProperty.call(record, path)) {
-        cur = record[path];
-      } else {
-        const parts = path.split('.');
-        for (let i = 0; i < parts.length; i++) {
-          // A null relation mid-path (e.g. {"Account": null} for Account.IsPublic)
-          // means every field reached through it is blank, like in Salesforce.
-          if (i > 0 && (cur === null || cur === undefined)) return V.NULL;
-          const key = (cur !== null && typeof cur === 'object' && !Array.isArray(cur)) ? findKey(cur, parts[i]) : undefined;
-          if (key === undefined) {
-            throw new Error(`Field "${path}" is not in the record JSON. Add it to the record (use null for a blank value).`);
-          }
-          cur = cur[key];
-        }
+      if (Object.prototype.hasOwnProperty.call(record, path)) return infer(record[path], path);
+      const parts = path.split(omni ? /[.:]/ : '.');
+      const out = walkPath(record, parts, 0);
+      if (out === MISSING) {
+        throw new Error(`Field "${path}" is not in the record JSON. Add it to the record (use null for a blank value).`);
       }
-      return infer(cur, path);
+      return infer(out, path);
+    }
+
+    function walkPath(cur, parts, idx) {
+      if (idx === parts.length) return cur;
+      // A null relation mid-path (e.g. {"Account": null} for Account.IsPublic)
+      // means every field reached through it is blank, like in Salesforce.
+      if (cur === null || cur === undefined) return idx > 0 ? null : MISSING;
+      if (Array.isArray(cur)) {
+        if (!omni) return MISSING;
+        // OmniStudio path semantics: traversing an array maps the rest of the
+        // path over its items, e.g. Items:Amount -> [100, 250, 400].
+        const out = [];
+        for (const item of cur) {
+          const r = walkPath(item, parts, idx);
+          if (r === MISSING || r === null || r === undefined) continue;
+          if (Array.isArray(r)) out.push(...r);
+          else out.push(r);
+        }
+        return out;
+      }
+      if (typeof cur !== 'object') return MISSING;
+      const key = findKey(cur, parts[idx]);
+      if (key === undefined) return MISSING;
+      return walkPath(cur[key], parts, idx + 1);
     }
 
     function infer(raw, path) {
       if (raw === null || raw === undefined) return V.NULL;
+      if (Array.isArray(raw)) {
+        if (omni) return V.list(raw);
+        throw new Error(`Field "${path}" is an array — reference a nested field like ${path}.SomeField`);
+      }
       switch (typeof raw) {
         case 'number':
           if (!isFinite(raw)) throw new Error(`Field "${path}" is not a finite number`);
@@ -88,7 +110,8 @@
         case 'string': return V.text(raw);
         case 'boolean': return V.boolean(raw);
         default:
-          throw new Error(`Field "${path}" is an ${Array.isArray(raw) ? 'array' : 'object'} — reference a nested field like ${path}.SomeField`);
+          if (omni) return V.object(raw);
+          throw new Error(`Field "${path}" is an object — reference a nested field like ${path}.SomeField`);
       }
     }
 
@@ -97,7 +120,7 @@
     function unary(node) {
       const v = evalNode(node.operand);
       if (node.op === '-') {
-        const n = V.toNumber(v, blankAsZero);
+        const n = V.toNumber(v, blankAsZero, omni);
         return n === null ? V.NULL : V.number(-n);
       }
       return V.boolean(!V.toBoolean(v));
@@ -112,14 +135,18 @@
       if (l.error) throw l.error;
       if (r.error) throw r.error;
       const a = l.value, b = r.value;
+      const eq = omni ? V.omniEquals : V.equals;
       switch (node.op) {
         case '+': return addSub(a, b, +1);
         case '-': return addSub(a, b, -1);
-        case '*': case '/': case '^': return mulDivPow(node.op, a, b);
-        case '&': return V.text(V.toText(a) + V.toText(b));
-        case '=': case '==': return V.boolean(V.equals(a, b, blankAsZero));
-        case '<>': case '!=': return V.boolean(!V.equals(a, b, blankAsZero));
+        case '*': case '/': case '^': case '%': return mulDivPow(node.op, a, b);
+        case '&': return V.text(V.toText(a, omni) + V.toText(b, omni));
+        case '=': case '==': return V.boolean(eq(a, b, blankAsZero));
+        case '<>': case '!=': return V.boolean(!eq(a, b, blankAsZero));
         case '<': case '<=': case '>': case '>=': return compareOp(node.op, a, b);
+        case 'LIKE': return V.boolean(V.toText(a, true).includes(V.toText(b, true)));
+        case 'NOTLIKE': return V.boolean(!V.toText(a, true).includes(V.toText(b, true)));
+        case '~=': return V.boolean(V.toText(a, true).toLowerCase() === V.toText(b, true).toLowerCase());
         default: throw new Error('Internal error: unknown operator ' + node.op);
       }
     }
@@ -158,8 +185,14 @@
       }
       if (a.type === 'text' || b.type === 'text') {
         // + concatenates text like &, but mixing Text with other types is
-        // still an error (toText says "Use TEXT() to convert").
-        if (sign > 0) return V.text(V.toText(a) + V.toText(b));
+        // still an error in standard mode (OmniStudio coerces loosely).
+        if (sign > 0) return V.text(V.toText(a, omni) + V.toText(b, omni));
+        if (omni) {
+          const x = V.toNumber(a, blankAsZero, true);
+          const y = V.toNumber(b, blankAsZero, true);
+          if (x === null || y === null) return V.NULL;
+          return V.number(x - y);
+        }
         throw new Error('Cannot use - on Text. Use & or + to concatenate.');
       }
       const x = V.toNumber(a, blankAsZero);
@@ -169,20 +202,56 @@
     }
 
     function mulDivPow(op, a, b) {
-      const x = V.toNumber(a, blankAsZero);
-      const y = V.toNumber(b, blankAsZero);
+      const x = V.toNumber(a, blankAsZero, omni);
+      const y = V.toNumber(b, blankAsZero, omni);
       if (x === null || y === null) return V.NULL;
       let r;
       if (op === '*') r = x * y;
       else if (op === '/') {
         if (y === 0) throw new Error('Division by zero');
         r = x / y;
-      } else r = Math.pow(x, y);
+      } else if (op === '%') r = (x * y) / 100; // OmniStudio: 50 % 20 -> 10
+      else r = Math.pow(x, y);
       if (!isFinite(r)) throw new Error('Result is not a valid number');
       return V.number(r);
     }
 
+    function omniDateMaybe(v) {
+      if (v.type === 'date' || v.type === 'datetime') return v.value;
+      if (v.type === 'text') return V.parseDate(v.value) || V.parseDateTime(v.value);
+      return null;
+    }
+
+    function omniNumMaybe(v) {
+      if (v.type === 'number') return v.value;
+      if (v.type === 'null') return blankAsZero ? 0 : null;
+      if (v.type === 'text') {
+        const t = v.value.trim();
+        const n = Number(t);
+        if (t !== '' && !isNaN(n)) return n;
+      }
+      return null;
+    }
+
     function compareOp(op, a, b) {
+      if (omni) {
+        // Loosely typed: dates win, then numbers, then lexicographic text.
+        let cmp = null;
+        const da = omniDateMaybe(a), db = omniDateMaybe(b);
+        if (da && db) cmp = da.getTime() - db.getTime();
+        else {
+          const na = omniNumMaybe(a), nb = omniNumMaybe(b);
+          if (na !== null && nb !== null) cmp = na - nb;
+          else if (a.type === 'text' && b.type === 'text') cmp = a.value < b.value ? -1 : a.value > b.value ? 1 : 0;
+          else return V.boolean(false);
+        }
+        switch (op) {
+          case '<': return V.boolean(cmp < 0);
+          case '<=': return V.boolean(cmp <= 0);
+          case '>': return V.boolean(cmp > 0);
+          case '>=': return V.boolean(cmp >= 0);
+        }
+      }
       if (V.isNull(a) || V.isNull(b)) {
         if (blankAsZero) {
           if (a.type === 'null' && (b.type === 'number' || b.type === 'null')) a = V.number(0);
@@ -204,8 +273,10 @@
     }
 
     function call(node) {
-      const spec = window.SFFunctions[node.name];
-      if (!spec) throw new Error(`Unknown function ${node.name}(). See the supported-functions list.`);
+      const spec = registry[node.name];
+      if (!spec) {
+        throw new Error(`Unknown function ${node.name}() in ${omni ? 'OmniStudio' : 'Salesforce'} mode. See the supported-functions list.`);
+      }
       const n = node.args.length;
       if (n < spec.min || n > spec.max) {
         const want = spec.min === spec.max ? `${spec.min}`

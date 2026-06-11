@@ -8,6 +8,7 @@
   const recordEl = $('record');
   const formulaEl = $('formula');
   const typeEl = $('rettype');
+  const modeEl = $('mode');
   const blankEl = $('blankzero');
   const errorsEl = $('errors');
   const finalEl = $('final');
@@ -18,12 +19,13 @@
   const soqlView = $('soqlView');
 
   const LS_KEY = 'sf-formula-eval';
-  const EXAMPLES = window.SFExamples;
-  const EXAMPLE_RECORD = JSON.stringify(EXAMPLES.record, null, 2);
+  const EXAMPLES = window.SFExamples.items;
+  const DEFAULT_EXAMPLE = EXAMPLES.find(e => e.label === 'Text');
   const DEFAULTS = {
-    record: EXAMPLE_RECORD,
-    formula: EXAMPLES.formulas.Text,
-    rettype: 'Text',
+    record: JSON.stringify(DEFAULT_EXAMPLE.record, null, 2),
+    formula: DEFAULT_EXAMPLE.formula,
+    rettype: DEFAULT_EXAMPLE.rettype,
+    mode: 'standard',
     blankzero: true
   };
 
@@ -39,6 +41,7 @@
     formulaEl.value = typeof s.formula === 'string' ? s.formula : DEFAULTS.formula;
     typeEl.value = s.rettype || DEFAULTS.rettype;
     if (!typeEl.value) typeEl.value = DEFAULTS.rettype;
+    modeEl.value = s.mode === 'omni' ? 'omni' : 'standard';
     blankEl.checked = typeof s.blankzero === 'boolean' ? s.blankzero : DEFAULTS.blankzero;
   }
 
@@ -48,6 +51,7 @@
         record: recordEl.value,
         formula: formulaEl.value,
         rettype: typeEl.value,
+        mode: modeEl.value,
         blankzero: blankEl.checked
       }));
     } catch (e) { /* storage full/blocked — fine */ }
@@ -81,9 +85,12 @@
       return;
     }
 
+    const omni = modeEl.value === 'omni';
+    refreshFnList(omni);
+
     let ast;
     try {
-      ast = parse(src);
+      ast = parse(src, { omni });
     } catch (e) {
       showError('Formula: ' + e.message);
       renderParseError(src, e);
@@ -95,7 +102,10 @@
       return;
     }
 
-    const { results, chosen } = window.SFEvaluator.evaluate(ast, record, { blankAsZero: blankEl.checked });
+    const { results, chosen } = window.SFEvaluator.evaluate(ast, record, {
+      blankAsZero: blankEl.checked,
+      mode: omni ? 'omni' : 'standard'
+    });
     const nodeById = new Map();
     (function index(n) {
       nodeById.set(n.id, n);
@@ -110,7 +120,8 @@
   }
 
   function renderSoql(ast) {
-    const fields = collectFields(ast);
+    // OmniStudio colon paths become dot paths for SOQL.
+    const fields = collectFields(ast).map(f => f.replace(/:/g, '.'));
     if (fields.length === 0) {
       soqlCard.hidden = true;
       return;
@@ -397,21 +408,23 @@
   recordEl.addEventListener('input', schedule);
   formulaEl.addEventListener('input', schedule);
   typeEl.addEventListener('change', run);
+  modeEl.addEventListener('change', run);
   blankEl.addEventListener('change', run);
   const exampleEl = $('example');
-  Object.keys(EXAMPLES.formulas).forEach(t => {
+  EXAMPLES.forEach(ex => {
     const o = document.createElement('option');
-    o.value = t;
-    o.textContent = t;
+    o.value = ex.label;
+    o.textContent = ex.label;
     exampleEl.append(o);
   });
   exampleEl.addEventListener('change', () => {
-    const t = exampleEl.value;
-    if (!t) return;
+    const ex = EXAMPLES.find(e => e.label === exampleEl.value);
     exampleEl.value = ''; // back to the "Load example…" placeholder
-    recordEl.value = EXAMPLE_RECORD;
-    formulaEl.value = EXAMPLES.formulas[t];
-    typeEl.value = t;
+    if (!ex) return;
+    recordEl.value = JSON.stringify(ex.record, null, 2);
+    formulaEl.value = ex.formula;
+    typeEl.value = ex.rettype;
+    modeEl.value = ex.mode;
     run();
   });
 
@@ -447,7 +460,13 @@
     gh.hidden = false;
   })();
 
-  $('fnlist').textContent = Object.keys(window.SFFunctions).sort().map(n => n + '()').join('  ');
+  let fnListMode = null;
+  function refreshFnList(omni) {
+    if (fnListMode === omni) return;
+    fnListMode = omni;
+    const reg = omni ? window.SFOmniFunctions : window.SFFunctions;
+    $('fnlist').textContent = Object.keys(reg).sort().map(n => n + '()').join('  ');
+  }
 
   loadState();
   run();

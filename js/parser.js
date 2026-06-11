@@ -3,11 +3,19 @@
 //   || / OR   →   && / AND   →   comparisons   →   &   →   + -   →   * /   →   ^   →   unary   →   primary
 // Lenient extras beyond strict Salesforce syntax: infix AND / OR / NOT
 // keywords, and == / != as aliases for = / <>.
+// OmniStudio mode (opts.omni) adds the LIKE / NOTLIKE / ~= comparison
+// operators and the % percentage operator (^ and % share the highest math
+// precedence, applied left to right, per the managed-package docs).
 (function () {
   const { FormulaError } = window.SFTokenizer;
 
-  function parse(src) {
-    const tokens = window.SFTokenizer.tokenize(src);
+  // Bare ROUND() direction keywords; in OmniStudio mode they're literals,
+  // not field references: ROUND(2.575, 2, HALF_UP).
+  const ROUND_MODES = ['UP', 'DOWN', 'HALF_UP', 'HALF_DOWN', 'HALF_EVEN', 'CEILING', 'FLOOR'];
+
+  function parse(src, opts) {
+    const omni = !!(opts && opts.omni);
+    const tokens = window.SFTokenizer.tokenize(src, omni);
     if (tokens.length === 0) throw new FormulaError('Formula is empty', 0, src.length);
     let pos = 0;
     let nextId = 1;
@@ -77,6 +85,9 @@
         if (up === 'NULL') {
           return mk({ type: 'literal', value: window.SFValues.NULL, start: t.start, end: t.end });
         }
+        if (omni && ROUND_MODES.includes(up)) {
+          return mk({ type: 'literal', value: window.SFValues.text(up), start: t.start, end: t.end });
+        }
         return mk({ type: 'ident', name: t.value, start: t.start, end: t.end });
       }
       throw new FormulaError(`Unexpected "${src.slice(t.start, t.end)}"`, t.start, t.end);
@@ -108,11 +119,22 @@
       return base;
     }
 
-    const parseMul = binaryLevel(parseExponent, t => (isOp(t, '*', '/') ? t.value : null));
+    // OmniStudio: ^ and % share a precedence level and apply left to right.
+    const parsePow = omni
+      ? binaryLevel(parseUnary, t => (isOp(t, '^', '%') ? t.value : null))
+      : parseExponent;
+    const parseMul = binaryLevel(parsePow, t => (isOp(t, '*', '/') ? t.value : null));
     const parseAdd = binaryLevel(parseMul, t => (isOp(t, '+', '-') ? t.value : null));
     const parseConcat = binaryLevel(parseAdd, t => (isOp(t, '&') ? '&' : null));
-    const parseCompare = binaryLevel(parseConcat,
-      t => (isOp(t, '=', '==', '<>', '!=', '<', '<=', '>', '>=') ? t.value : null));
+    const parseCompare = binaryLevel(parseConcat, t => {
+      if (isOp(t, '=', '==', '<>', '!=', '<', '<=', '>', '>=')) return t.value;
+      if (omni) {
+        if (isOp(t, '~=')) return '~=';
+        if (isKw(t, 'LIKE')) return 'LIKE';
+        if (isKw(t, 'NOTLIKE')) return 'NOTLIKE';
+      }
+      return null;
+    });
     // In these two levels we're always right after a complete operand, so a
     // bare AND/OR keyword here is an infix operator (AND(...) at operand
     // position is parsed as a function call by parsePrimary instead).

@@ -8,7 +8,7 @@ const vm = require('vm');
 const ctx = { console };
 ctx.window = ctx;
 vm.createContext(ctx);
-for (const f of ['values.js', 'tokenizer.js', 'parser.js', 'functions.js', 'evaluator.js', 'examples.js']) {
+for (const f of ['values.js', 'tokenizer.js', 'parser.js', 'functions.js', 'evaluator.js', 'omni-functions.js', 'examples.js']) {
   vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'js', f), 'utf8'), ctx, { filename: f });
 }
 
@@ -184,29 +184,127 @@ check('Revenue__c < 0 || Bogus__c > 1', 'ERROR');
 {
   const EXPECTED_TYPE = {
     Checkbox: 'boolean', Currency: 'number', Date: 'date',
-    'Date/Time': 'datetime', Number: 'number', Percent: 'percent-or-number',
-    Text: 'text'
+    'Date/Time': 'datetime', Number: 'number', Percent: 'number', Text: 'text'
   };
-  for (const [rettype, formula] of Object.entries(ctx.SFExamples.formulas)) {
-    const ast = ctx.SFParser.parse(formula);
-    const { results } = ctx.SFEvaluator.evaluate(ast, ctx.SFExamples.record, { blankAsZero: true });
+  for (const ex of ctx.SFExamples.items) {
+    const omni = ex.mode === 'omni';
+    const ast = ctx.SFParser.parse(ex.formula, { omni });
+    const { results } = ctx.SFEvaluator.evaluate(ast, ex.record, { blankAsZero: true, mode: ex.mode });
     const root = results.get(ast.id);
-    const expected = EXPECTED_TYPE[rettype] === 'percent-or-number' ? 'number' : EXPECTED_TYPE[rettype];
-    if (root.error || root.value.type !== expected) {
+    if (root.error || root.value.type !== EXPECTED_TYPE[ex.rettype]) {
       failures++;
-      console.log(`FAIL  example "${rettype}"`, root.error || `wrong type ${root.value.type}`);
+      console.log(`FAIL  example "${ex.label}"`, root.error || `wrong type ${root.value.type}`);
     } else {
-      console.log(`ok    example "${rettype}" => ${ctx.SFValues.display(root.value)}`);
+      console.log(`ok    example "${ex.label}" => ${ctx.SFValues.display(root.value)}`);
     }
   }
-  // The Text example's tail depends on TODAY(), so assert only the stable prefix.
-  const textAst = ctx.SFParser.parse(ctx.SFExamples.formulas.Text);
-  const textRoot = ctx.SFEvaluator.evaluate(textAst, ctx.SFExamples.record, { blankAsZero: true }).results.get(textAst.id);
+  // The standard Text example's tail depends on TODAY(); assert the stable prefix.
+  const textEx = ctx.SFExamples.items.find(e => e.label === 'Text');
+  const textAst = ctx.SFParser.parse(textEx.formula);
+  const textRoot = ctx.SFEvaluator.evaluate(textAst, textEx.record, { blankAsZero: true }).results.get(textAst.id);
   if (!textRoot.value.value.startsWith('[HOT] Acme Corp - $2425 discount, ')) {
     failures++;
     console.log('FAIL  Text example prefix', textRoot);
   }
 }
+
+// ---------- OmniStudio (managed package) mode ----------
+
+const omniRecord = {
+  Color: 'Red',
+  Price: '$1200',
+  InputDate: '1999-06-15',
+  Customer: { FirstName: 'Ada', LastName: 'Lovelace' },
+  Items: [
+    { Name: 'Basic', Amount: 100 },
+    { Name: 'Pro', Amount: 250 },
+    { Name: 'Pro Max', Amount: 400 }
+  ],
+  Data: { Name: { FirstName: 'Thomas', MiddleName: 'Alva', LastName: 'Edison' } },
+  GetGroup: 'Name',
+  GetField: 'FirstName'
+};
+
+function omniCheck(formula, expected) {
+  try {
+    const ast = ctx.SFParser.parse(formula, { omni: true });
+    const { results } = ctx.SFEvaluator.evaluate(ast, omniRecord, { blankAsZero: true, mode: 'omni' });
+    const root = results.get(ast.id);
+    let actual;
+    if (root.error) actual = 'ERROR: ' + root.error;
+    else {
+      const v = root.value;
+      actual = v.type === 'date' ? ctx.SFValues.fmtDate(v.value)
+        : v.type === 'datetime' ? 'datetime'
+        : v.type === 'null' ? null
+        : v.type === 'list' ? JSON.stringify(v.value)
+        : v.value;
+    }
+    const pass = expected === 'ERROR' ? String(actual).startsWith('ERROR') : actual === expected;
+    if (!pass) {
+      failures++;
+      console.log(`FAIL  [omni] ${formula}\n      expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
+    } else {
+      console.log(`ok    [omni] ${formula}  =>  ${JSON.stringify(actual)}`);
+    }
+  } catch (e) {
+    failures++;
+    console.log(`FAIL  [omni] ${formula}\n      threw ${e.message}`);
+  }
+}
+
+// operators & precedence — first case is straight from the Salesforce docs
+omniCheck('"ABC" LIKE "B" && 44 - 5 * 2 ^ 3 == 4', true);
+omniCheck('50 % 20', 10);
+omniCheck('2 ^ 3 % 100', 8); // ^ and % same level, left to right: (2^3) % 100
+omniCheck('"ABC" ~= "abc"', true);
+omniCheck('"ABC" NOTLIKE "A"', false);
+omniCheck('1 == "1"', true); // loose typing
+omniCheck('InputDate < "2000-01-01"', true); // text dates compare as dates
+
+// merge fields & colon paths
+omniCheck('IF(%Color% == "Red", "Black", %Color%)', 'Black');
+omniCheck('Customer:FirstName', 'Ada');
+omniCheck('SUM(Items:Amount)', 750); // arrays map over the path
+
+// lists
+omniCheck('AVG(1,2,3,4,5,6,7,8,9,10)', 5.5);
+omniCheck('MAX(Items:Amount)', 400);
+omniCheck('LISTSIZE(Items)', 3);
+omniCheck("LISTSIZE(FILTER(LIST(Items), 'Amount >= 200'))", 2);
+omniCheck('ISBLANK(FILTER(LIST(Items), \'Amount > 999\'))', true);
+omniCheck('LISTSIZE(LIST(DESERIALIZE("[{\\"k\\":1},{\\"k\\":2}]")))', 2);
+omniCheck('VALUELOOKUP(Data, GetGroup, GetField)', 'Thomas');
+
+// strings & loose typing
+omniCheck('CONCAT("a", NULL, 1, "b")', 'a1b');
+omniCheck('SUBSTRING("The quick brown fox jumped over the lazy dog.", "q", "n")', 'quick brow');
+omniCheck('SUBSTRING(Price, 1) % 20', 240); // "$1200" -> "1200" -> number
+omniCheck('STRINGINDEXOF("This is the test String","test")', 12);
+omniCheck('MAXSTRING("Amy","Ziggy")', 'Ziggy');
+
+// rounding
+omniCheck('ROUND(3.1415 * 3)', 9.42); // default precision is 2
+omniCheck('ROUND(2.575, 2, HALF_UP)', 2.58);
+omniCheck('ROUND(2.575, 2, HALF_DOWN)', 2.57);
+omniCheck('ROUND(2.572, 0, CEILING)', 3);
+omniCheck('ROUND(2.572, 0, FLOOR)', 2);
+
+// dates
+omniCheck('DATEDIFF("1900-01-01","2000-01-01")', 36524);
+omniCheck('DATEDIFF("2000-01-01","1999-01-01")', -365);
+omniCheck('AGEON("1990-04-15", "2024-07-09")', 34);
+omniCheck('FORMATDATETIME(ADDDAY("1999-01-01",100), "yyyy-MM-dd")', '1999-04-11');
+omniCheck('FORMATDATETIME(EOM("2026-02-10"), "yyyy-MM-dd")', '2026-02-28');
+omniCheck('YEAR("1999-01-11")', 1999);
+omniCheck('MONTH("1999-01-11")', 1);
+omniCheck("DATETIMETOUNIX('11/30/2016 07:15:34')", 1480490134000);
+
+// org-dependent functions fail with a clear message
+omniCheck('QUERY("SELECT Id FROM Account")', 'ERROR');
+
+// standard-mode functions aren't leaked into omni mode
+omniCheck('ISPICKVAL(Color, "Red")', 'ERROR');
 
 // parse errors carry positions
 try {

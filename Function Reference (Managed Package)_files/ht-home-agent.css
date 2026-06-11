@@ -1,0 +1,100 @@
+@font-face {
+    font-family: 'ITC Avant Garde Gothic Pro';
+    src: url('/resource/HTCommunityCustomFonts/ITCAvantGardeProForSalesforce-Demi.ttf')
+        format('ttf');
+}
+
+div.hc-inline-messaging__container
+    div.embedded-messaging
+    > .embeddedMessagingFrame {
+    position: fixed;
+    bottom: 0;
+    background: transparent;
+    border: none;
+    outline: none;
+    border-radius: 0;
+    box-shadow: 2px 2px 20px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+    -webkit-overflow-scrolling: touch;
+}
+
+@media (min-width: 768px) {
+    div.hc-inline-messaging__container
+        div.embedded-messaging
+        > .embeddedMessagingFrame {
+        position: relative;
+        border-radius: 8px 8px 0 0;
+    }
+}
+
+.hc-inline-messaging__container {
+    height: 100%;
+    z-index: 0;
+}
+
+@media (min-width: 768px) {
+    .hc-inline-messaging__container {
+        width: 75%;
+    }
+}
+
+div.hc-inline-messaging__container
+    div.embedded-messaging
+    > .embeddedMessagingFrame[class~='isMaximized'] {
+    width: 100%;
+    max-width: 100%;
+    /* override miaw bootstrap and reserve space for header */
+    height: calc(100dvh - 112px);
+    max-height: calc(100dvh - 112px);
+    right: 0;
+    margin: 0;
+    border-radius: 0;
+    z-index: inherit;
+}
+
+@media (min-width: 768px) {
+    div.hc-inline-messaging__container
+        div.embedded-messaging
+        > .embeddedMessagingFrame[class~='isMaximized'] {
+        height: 72vh;
+        min-height: 30rem;
+        margin-bottom: 2rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    div.hc-inline-messaging__container
+        div.embedded-messaging
+        > .embeddedMessagingFrame[class~='isMaximized'] {
+        height: 76vh;
+        min-height: 30rem;
+        margin-bottom: 2rem;
+    }
+}
+
+@media (min-width: 1280px) {
+    div.hc-inline-messaging__container
+        div.embedded-messaging
+        > .embeddedMessagingFrame[class~='isMaximized'] {
+        height: 70vh;
+        min-height: 30rem;
+        margin-bottom: 2rem;
+    }
+}
+
+@media (max-width: 767px) and (orientation: landscape) {
+    div.hc-inline-messaging__container
+        div.embedded-messaging
+        > .embeddedMessagingFrame[class~='isMaximized'] {
+        height: 30rem;
+        min-height: 30rem;
+    }
+}
+
+body.embeddedMessagingPreventScrolling {
+    position: static;
+    height: auto;
+    width: auto;
+    cursor: default;
+    overflow: visible;
+}

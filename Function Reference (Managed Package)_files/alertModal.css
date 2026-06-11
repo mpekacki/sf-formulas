@@ -1,0 +1,25 @@
+.additional-content-wrapper.alert-modal .back-icon svg {
+    width: 1rem;
+    height: 1rem;
+    fill: var(--wes-g-color-palette-blue-50, #0176D3) !important;
+}
+
+.additional-content-wrapper.alert-modal .text-area textarea {
+    resize: none;
+}
+
+.additional-content-wrapper.alert-modal .text-area .slds-textarea::-webkit-scrollbar {
+    width: var(--wes-g-spacing-2, 0.5rem);
+    max-height: 87px;
+}
+
+.additional-content-wrapper.alert-modal .text-area .slds-textarea::-webkit-scrollbar-thumb {
+    border-radius: var(--wes-g-radius-border-2, 0.25rem);
+    background: #D9D9D9;
+}
+
+.additional-content-wrapper.alert-modal .slds-form-element__help {
+    line-height: 1.125rem;
+    position: absolute;
+    margin-top: var(--wes-g-spacing-1, 0.25rem);
+}

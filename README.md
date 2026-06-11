@@ -4,6 +4,13 @@ A zero-dependency web app for debugging Salesforce formulas against a record.
 Paste a record as JSON, paste a formula, pick the return type — and see not
 just the final result but the value of **every subexpression**.
 
+Two dialects are supported via the **Dialect** picker:
+
+- **Salesforce (standard)** — classic formula fields / validation rules.
+- **OmniStudio (managed package)** — the expression language used in Data
+  Mappers and Integration Procedures, per the "Function Reference (Managed
+  Package)" help article.
+
 ## Running
 
 Just open `index.html` in a browser. No build step, no server, no dependencies.
@@ -41,6 +48,8 @@ To run the engine smoke tests: `node tests/smoke.js`
 
 ## Formula language support
 
+### Salesforce (standard) dialect
+
 Operators: `+ - * / ^` , `&` or `+` (text concatenation), `= <> < <= > >=`, `&& ||`,
 parentheses, `/* comments */`, and literals `TRUE FALSE NULL`.
 
@@ -52,6 +61,36 @@ Lenient extras beyond strict Salesforce syntax: `==` / `!=` aliases and infix
 `LEFT/RIGHT/MID`, `SUBSTITUTE`, `FIND`, …), math (`ROUND`, `FLOOR`, `CEILING`,
 `MOD`, `MIN/MAX`, …) and dates (`TODAY`, `DATE`, `DATEVALUE`, `ADDMONTHS`,
 `YEAR/MONTH/DAY`, …). The full list is shown in the app.
+
+### OmniStudio (managed package) dialect
+
+Adds on top of the parser: the `%` percentage operator (`50 % 20` → 10, same
+precedence as `^`, left to right), `LIKE` / `NOTLIKE` (contains) and `~=`
+(case-insensitive equality) operators, `%MergeField%` references, colon field
+paths (`Account:Contact:Birthdate`), backslash escapes in strings, and bare
+`ROUND` direction keywords (`HALF_UP`, `CEILING`, …).
+
+Semantics are loosely typed like the real runtime: numeric strings work in
+math (`SUBSTRING("$1200", 1) / 100`), `1 == "1"` is true, and `+`
+concatenates when either side is text. JSON lists and objects are first-class
+values — paths map over arrays (`Items:Amount` → `[100, 250, 400]`), feeding
+`SUM` / `AVG` / `MIN` / `MAX`, `LIST`, `LISTSIZE`, `FILTER` (the condition
+string is parsed and evaluated per item), `SORTBY`, `LISTMERGE`,
+`LISTMERGEPRIMARY` and `VALUELOOKUP`.
+
+Other functions: `IF`, `ISBLANK`, `ISNOTBLANK`, `CONCAT`, `SUBSTRING` (with
+search-string indexes), `STRINGINDEXOF`, `MAXSTRING`, `TOSTRING`,
+`SERIALIZE` / `DESERIALIZE` / `RESERIALIZE`, `BASE64ENCODE`, `BASEURL`,
+`GENERATEGLOBALKEY`, `ROUND` (default 2 decimals + Java RoundingMode
+directions), `ABS`, `SQRT`, and dates: `TODAY` / `NOW` (optional
+SimpleDateFormat pattern), `ADDDAY` / `ADDMONTH` / `ADDYEAR`, `EOM`,
+`DATEDIFF`, `AGE` / `AGEON`, `MONTH` / `YEAR`, `DATETIMETOUNIX` /
+`UNIXTODATETIME`, `FORMATDATETIME` / `FORMATDATETIMEGMT` (GMT only).
+
+Org-dependent functions (`QUERY`, `COUNTQUERY`, `FUNCTION`, `INVOKEIP`,
+`ORDERITEMATTRIBUTES`) are recognized but fail with a clear "needs a live
+Salesforce org" message. Time zone names in `FORMATDATETIME` other than
+GMT/UTC aren't supported.
 
 ## Assumptions & limitations
 

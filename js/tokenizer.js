@@ -10,9 +10,13 @@
   }
 
   // Multi-char operators must come before their single-char prefixes.
-  const OPS = ['==', '!=', '<>', '<=', '>=', '&&', '||', '=', '<', '>', '+', '-', '*', '/', '^', '&', '!'];
+  const OPS = ['==', '!=', '<>', '<=', '>=', '&&', '||', '~=', '=', '<', '>', '+', '-', '*', '/', '^', '&', '!'];
+  const MERGE_RE = /^%([A-Za-z_$][A-Za-z0-9_$:.]*)%/;
 
-  function tokenize(src) {
+  // `omni` enables OmniStudio syntax: %MergeField% references, the %
+  // percentage operator, and ':' in field paths (Account:Contact:Birthdate).
+  function tokenize(src, omni) {
+    const identChar = omni ? /[A-Za-z0-9_$.:]/ : /[A-Za-z0-9_$.]/;
     const tokens = [];
     let i = 0;
     const n = src.length;
@@ -27,9 +31,19 @@
       }
       if (c === '"' || c === "'") {
         let j = i + 1;
-        while (j < n && src[j] !== c) j++;
+        let val = '';
+        while (j < n && src[j] !== c) {
+          // OmniStudio strings support backslash escapes, e.g. DESERIALIZE("{\"key\":\"value\"}")
+          if (omni && src[j] === '\\' && j + 1 < n) {
+            val += src[j + 1];
+            j += 2;
+            continue;
+          }
+          val += src[j];
+          j++;
+        }
         if (j >= n) throw new FormulaError('Unterminated string', i, n);
-        tokens.push({ type: 'string', value: src.slice(i + 1, j), start: i, end: j + 1 });
+        tokens.push({ type: 'string', value: val, start: i, end: j + 1 });
         i = j + 1;
         continue;
       }
@@ -44,9 +58,20 @@
         i = j;
         continue;
       }
+      if (c === '%' && omni) {
+        const m = MERGE_RE.exec(src.slice(i));
+        if (m) {
+          tokens.push({ type: 'ident', value: m[1], start: i, end: i + m[0].length });
+          i += m[0].length;
+        } else {
+          tokens.push({ type: 'op', value: '%', start: i, end: i + 1 });
+          i++;
+        }
+        continue;
+      }
       if (/[A-Za-z_$]/.test(c)) {
         let j = i;
-        while (j < n && /[A-Za-z0-9_$.]/.test(src[j])) j++;
+        while (j < n && identChar.test(src[j])) j++;
         tokens.push({ type: 'ident', value: src.slice(i, j), start: i, end: j });
         i = j;
         continue;

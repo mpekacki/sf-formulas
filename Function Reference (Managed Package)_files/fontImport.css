@@ -1,0 +1,24 @@
+@font-face {
+    font-family: 'AvantGardeDemi';
+    src: url(ITCAvantGardeStd-Demi.otf);
+}
+@font-face {
+    font-family: 'SalesforceSans Semibold';
+    src: url(SalesforceSans-Semibold.ttf);
+}
+@font-face {
+    font-family: 'Salesforce Regular';
+    src: url(SalesforceSans-Regular.ttf);
+}
+@font-face {
+    font-family: 'AvantGardeProDemi';
+    src: url(ITCAvantGardePro-Demi.otf);
+}
+@font-face {
+    font-family: 'ITC Avant Garde Gothic Pro';
+    src: url(ITCAvantGardeProForSalesforce-Demi.ttf);
+}
+@font-face {
+    font-family: 'Segoe UI';
+    src: url(segoeuisl.ttf);
+}

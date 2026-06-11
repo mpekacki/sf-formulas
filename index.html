@@ -28,6 +28,12 @@
       <label class="card-title" for="formula">Formula</label>
       <textarea id="formula" rows="6" spellcheck="false" placeholder="CONTAINS(TEXT(StageName), &quot;Closed&quot;)"></textarea>
       <div class="controls">
+        <label class="inline">Dialect
+          <select id="mode">
+            <option value="standard">Salesforce</option>
+            <option value="omni">OmniStudio (managed pkg)</option>
+          </select>
+        </label>
         <label class="inline">Return type
           <select id="rettype">
             <option>Checkbox</option>
@@ -56,9 +62,10 @@
 
     <details class="card">
       <summary>Supported functions &amp; operators</summary>
-      <p class="hint">Operators: <code>+ - * / ^</code>, <code>&amp;</code> or <code>+</code> (concat), <code>= == != &lt;&gt; &lt; &lt;= &gt; &gt;= &amp;&amp; || !</code>, plus infix <code>AND OR NOT</code> keywords. <code>/* comments */</code> are supported.</p>
+      <p class="hint">Salesforce: <code>+ - * / ^</code>, <code>&amp;</code> or <code>+</code> (concat), <code>= == != &lt;&gt; &lt; &lt;= &gt; &gt;= &amp;&amp; || !</code>, plus infix <code>AND OR NOT</code> keywords. <code>/* comments */</code> are supported.</p>
+      <p class="hint">OmniStudio adds: <code>%</code> (percentage: <code>50 % 20</code> → 10), <code>LIKE NOTLIKE ~=</code>, <code>%MergeField%</code> references, colon paths (<code>Account:Contact:Birthdate</code> — arrays map, e.g. <code>Items:Amount</code>), and loose typing.</p>
       <code id="fnlist" class="fnlist"></code>
-      <p class="hint">Notes: dates use UTC; text comparison is case-sensitive; field types are inferred from the JSON values.</p>
+      <p class="hint">Notes: dates use UTC; standard-mode text comparison is case-sensitive; field types are inferred from the JSON values.</p>
     </details>
   </section>
 
@@ -94,6 +101,7 @@
 <script src="js/parser.js"></script>
 <script src="js/functions.js"></script>
 <script src="js/evaluator.js"></script>
+<script src="js/omni-functions.js"></script>
 <script src="js/examples.js"></script>
 <script src="js/app.js"></script>
 </body>
