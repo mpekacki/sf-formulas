@@ -87,6 +87,10 @@ check('CASE(StageName, "Nope", 1, 99)', 99);
 
 // text
 check('TEXT(LEN(Name)) & "!"', '3!');
+check('Name + "bar"', 'foobar');
+check('"a" + NULL + "b"', 'ab');
+check('Name + 1', 'ERROR'); // Text + Number still needs TEXT()
+check('"a" - "b"', 'ERROR');
 check('"a" & NULL & "b"', 'ab');
 check('UPPER(LEFT(Name, 2))', 'FO');
 check('SUBSTITUTE("a-b-c", "-", "+")', 'a+b+c');

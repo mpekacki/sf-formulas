@@ -34,7 +34,7 @@ To run the engine smoke tests: `node tests/smoke.js`
 
 ## Formula language support
 
-Operators: `+ - * / ^` , `&` (concatenation), `= <> < <= > >=`, `&& ||`,
+Operators: `+ - * / ^` , `&` or `+` (text concatenation), `= <> < <= > >=`, `&& ||`,
 parentheses, `/* comments */`, and literals `TRUE FALSE NULL`.
 
 Lenient extras beyond strict Salesforce syntax: `==` / `!=` aliases and infix

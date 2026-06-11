@@ -154,7 +154,10 @@
         return V.number((x.value.getTime() - y.value.getTime()) / MS_PER_DAY);
       }
       if (a.type === 'text' || b.type === 'text') {
-        throw new Error(`Cannot use ${sign > 0 ? '+' : '-'} on Text. Use & to concatenate.`);
+        // + concatenates text like &, but mixing Text with other types is
+        // still an error (toText says "Use TEXT() to convert").
+        if (sign > 0) return V.text(V.toText(a) + V.toText(b));
+        throw new Error('Cannot use - on Text. Use & or + to concatenate.');
       }
       const x = V.toNumber(a, blankAsZero);
       const y = V.toNumber(b, blankAsZero);
