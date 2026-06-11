@@ -432,6 +432,21 @@
     setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
   });
 
+  // When hosted on GitHub Pages (https://<user>.github.io/<repo>/), derive the
+  // repo URL from the page's own location. Hidden everywhere else (file://, localhost).
+  (function () {
+    const m = location.hostname.match(/^([^.]+)\.github\.io$/i);
+    if (!m) return;
+    const user = m[1];
+    // Project pages have the repo as the first path segment; user/org pages
+    // (no segment) live in the <user>.github.io repo itself.
+    const seg = location.pathname.split('/').filter(Boolean)[0];
+    const repo = seg || `${user}.github.io`;
+    const gh = $('ghlink');
+    gh.href = `https://github.com/${user}/${repo}`;
+    gh.hidden = false;
+  })();
+
   $('fnlist').textContent = Object.keys(window.SFFunctions).sort().map(n => n + '()').join('  ');
 
   loadState();
