@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Salesforce Formula Evaluator</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>Salesforce Formula Evaluator</h1>
+  <p class="sub">Paste a record, paste a formula, and see how every part of it evaluates.</p>
+</header>
+
+<main>
+  <section class="col">
+    <div class="card">
+      <label class="card-title" for="record">Record JSON</label>
+      <textarea id="record" rows="11" spellcheck="false" placeholder='{"Name": "foo", "Revenue__c": 123}'></textarea>
+      <p class="hint">Nested objects work for cross-object references (e.g. <code>Account.Name</code>). Use <code>null</code> for blank fields.</p>
+    </div>
+
+    <div class="card">
+      <label class="card-title" for="formula">Formula</label>
+      <textarea id="formula" rows="6" spellcheck="false" placeholder="CONTAINS(TEXT(StageName), &quot;Closed&quot;)"></textarea>
+      <div class="controls">
+        <label class="inline">Return type
+          <select id="rettype">
+            <option>Checkbox</option>
+            <option>Currency</option>
+            <option>Date</option>
+            <option>Date/Time</option>
+            <option>Number</option>
+            <option>Percent</option>
+            <option>Text</option>
+          </select>
+        </label>
+        <label class="inline check"><input type="checkbox" id="blankzero"> Treat blank fields as zeroes</label>
+        <button id="reset" type="button">Load example</button>
+      </div>
+    </div>
+
+    <details class="card">
+      <summary>Supported functions &amp; operators</summary>
+      <p class="hint">Operators: <code>+ - * / ^ &amp;</code> (concat) <code>= == != &lt;&gt; &lt; &lt;= &gt; &gt;= &amp;&amp; || !</code>, plus infix <code>AND OR NOT</code> keywords. <code>/* comments */</code> are supported.</p>
+      <code id="fnlist" class="fnlist"></code>
+      <p class="hint">Notes: dates use UTC; text comparison is case-sensitive; field types are inferred from the JSON values.</p>
+    </details>
+  </section>
+
+  <section class="col">
+    <div id="errors" class="card error-banner" hidden></div>
+
+    <div class="card">
+      <div class="card-title">Result</div>
+      <div id="final" class="final muted">—</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Formula breakdown <span class="hint-inline">hover any part to see its value</span></div>
+      <pre id="formulaView" class="formula-view"></pre>
+      <div class="legend">
+        <span><i class="sw sw-true"></i> true</span>
+        <span><i class="sw sw-false"></i> false</span>
+        <span><i class="sw sw-err"></i> error</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Evaluation tree</div>
+      <div id="treeView" class="tree"></div>
+    </div>
+  </section>
+</main>
+
+<div id="tooltip" class="tooltip" hidden></div>
+
+<script src="js/values.js"></script>
+<script src="js/tokenizer.js"></script>
+<script src="js/parser.js"></script>
+<script src="js/functions.js"></script>
+<script src="js/evaluator.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
