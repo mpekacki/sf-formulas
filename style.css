@@ -214,6 +214,10 @@ details summary {
 .node.bool-true { background: rgba(22, 163, 74, 0.10); box-shadow: inset 0 -2px 0 rgba(22, 163, 74, 0.45); }
 .node.bool-false { background: rgba(220, 38, 38, 0.10); box-shadow: inset 0 -2px 0 rgba(220, 38, 38, 0.45); }
 .node.err { text-decoration: underline wavy var(--red) 1.5px; text-underline-offset: 3px; }
+.node.chosen {
+  background: rgba(245, 158, 11, 0.16);
+  box-shadow: inset 0 -2px 0 rgba(245, 158, 11, 0.75);
+}
 .node.hl {
   background: rgba(79, 70, 229, 0.16);
   outline: 1.5px solid var(--accent);
@@ -241,6 +245,7 @@ details summary {
 }
 .sw-true { background: rgba(22, 163, 74, 0.25); }
 .sw-false { background: rgba(220, 38, 38, 0.25); }
+.sw-chosen { background: rgba(245, 158, 11, 0.35); }
 .sw-err { background: #fff; border-bottom: 2px wavy var(--red); text-decoration: underline wavy var(--red); }
 
 /* ---------- evaluation tree ---------- */
@@ -280,6 +285,7 @@ details summary {
 .badge-null { background: #f3f4f6; color: #6b7280; border-color: #e5e7eb; }
 .badge-err { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
 .badge-err.dim, .badge-skip { background: #f3f4f6; color: #9ca3af; border-color: #e5e7eb; }
+.badge-chosen { background: #fffbeb; color: #b45309; border-color: #fde68a; }
 
 /* ---------- SOQL ---------- */
 
@@ -337,3 +343,4 @@ details summary {
 }
 .tt-err { color: #fca5a5; }
 .tt-muted { color: #9ca3af; }
+.tt-chosen { color: #fcd34d; font-size: 12px; margin-top: 4px; }

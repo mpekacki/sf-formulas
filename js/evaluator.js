@@ -9,6 +9,9 @@
   function evaluate(ast, record, opts) {
     const blankAsZero = !!(opts && opts.blankAsZero);
     const results = new Map();
+    // Node ids of branches picked by IF/CASE/BLANKVALUE/NULLVALUE,
+    // so the UI can highlight which alternative produced the result.
+    const chosen = new Set();
 
     function evalNode(node) {
       try {
@@ -33,7 +36,7 @@
       }
     }
 
-    const env = { eval: evalNode, evalSafe, blankAsZero };
+    const env = { eval: evalNode, evalSafe, blankAsZero, markChosen: node => chosen.add(node.id) };
 
     function compute(node) {
       switch (node.type) {
@@ -223,7 +226,7 @@
     } catch (e) {
       rootError = e;
     }
-    return { results, rootError };
+    return { results, chosen, rootError };
   }
 
   window.SFEvaluator = { evaluate };

@@ -27,8 +27,8 @@ let failures = 0;
 
 function evalRoot(formula, opts) {
   const ast = ctx.SFParser.parse(formula);
-  const { results } = ctx.SFEvaluator.evaluate(ast, record, opts || { blankAsZero: true });
-  return { root: results.get(ast.id), ast, results };
+  const { results, chosen } = ctx.SFEvaluator.evaluate(ast, record, opts || { blankAsZero: true });
+  return { root: results.get(ast.id), ast, results, chosen };
 }
 
 function check(formula, expected, opts) {
@@ -140,6 +140,28 @@ check('Revenue__c < 0 || Bogus__c > 1', 'ERROR');
   } else {
     failures++;
     console.log('FAIL  sub-results of OR', left, right);
+  }
+}
+
+// chosen-branch tracking for IF / CASE / BLANKVALUE
+{
+  // Name is 'foo', so the else branch ("bar") should be chosen
+  const r1 = evalRoot('IF(Name == "ACME", "foo", "bar")');
+  const okIf = !r1.chosen.has(r1.ast.args[1].id) && r1.chosen.has(r1.ast.args[2].id);
+
+  // StageName matches the first pair, so its result (the literal 1) is chosen
+  const r2 = evalRoot('CASE(StageName, "Closed Won", 1, "Closed Lost", 2, 0)');
+  const okCase = r2.chosen.has(r2.ast.args[2].id) && !r2.chosen.has(r2.ast.args[4].id) && !r2.chosen.has(r2.ast.args[5].id);
+
+  // Missing__c is blank, so the fallback is chosen
+  const r3 = evalRoot('BLANKVALUE(Missing__c, 5)');
+  const okBlank = r3.chosen.has(r3.ast.args[1].id) && !r3.chosen.has(r3.ast.args[0].id);
+
+  if (okIf && okCase && okBlank) {
+    console.log('ok    chosen branches: IF -> else, CASE -> first match, BLANKVALUE -> fallback');
+  } else {
+    failures++;
+    console.log(`FAIL  chosen branches (IF=${okIf}, CASE=${okCase}, BLANKVALUE=${okBlank})`);
   }
 }
 

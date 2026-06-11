@@ -53,7 +53,9 @@
     const yes = env.evalSafe(nodes[1]);
     const no = env.evalSafe(nodes[2]);
     if (cond.error) throw cond.error;
-    const chosen = V.toBoolean(cond.value) ? yes : no;
+    const takeYes = V.toBoolean(cond.value);
+    env.markChosen(takeYes ? nodes[1] : nodes[2]);
+    const chosen = takeYes ? yes : no;
     if (chosen.error) throw chosen.error;
     return chosen.value;
   }, { lazy: true });
@@ -99,9 +101,11 @@
     const fb = env.evalSafe(nodes[1]);
     if (r.error) throw r.error;
     if (V.isBlank(r.value)) {
+      env.markChosen(nodes[1]);
       if (fb.error) throw fb.error;
       return fb.value;
     }
+    env.markChosen(nodes[0]);
     return r.value;
   }, { lazy: true });
 
@@ -110,9 +114,11 @@
     const fb = env.evalSafe(nodes[1]);
     if (r.error) throw r.error;
     if (V.isNull(r.value)) {
+      env.markChosen(nodes[1]);
       if (fb.error) throw fb.error;
       return fb.value;
     }
+    env.markChosen(nodes[0]);
     return r.value;
   }, { lazy: true });
 
@@ -123,11 +129,13 @@
     const rs = nodes.map(n => env.evalSafe(n));
     if (rs[0].error) throw rs[0].error;
     const expr = rs[0].value;
-    let chosen = rs[rs.length - 1]; // else branch
+    let chosenIdx = nodes.length - 1; // else branch
     for (let i = 1; i < nodes.length - 1; i += 2) {
       if (rs[i].error) throw rs[i].error;
-      if (V.equals(expr, rs[i].value, env.blankAsZero)) { chosen = rs[i + 1]; break; }
+      if (V.equals(expr, rs[i].value, env.blankAsZero)) { chosenIdx = i + 1; break; }
     }
+    env.markChosen(nodes[chosenIdx]);
+    const chosen = rs[chosenIdx];
     if (chosen.error) throw chosen.error;
     return chosen.value;
   }, { lazy: true });

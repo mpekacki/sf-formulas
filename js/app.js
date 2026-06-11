@@ -33,7 +33,7 @@
   };
 
   // Current evaluation snapshot used by the hover handlers.
-  let current = { src: '', results: new Map(), nodeById: new Map() };
+  let current = { src: '', results: new Map(), nodeById: new Map(), chosen: new Set() };
 
   // ---------- persistence ----------
 
@@ -96,21 +96,21 @@
       finalEl.textContent = '—';
       treeView.textContent = '';
       soqlCard.hidden = true;
-      current = { src, results: new Map(), nodeById: new Map() };
+      current = { src, results: new Map(), nodeById: new Map(), chosen: new Set() };
       return;
     }
 
-    const { results } = window.SFEvaluator.evaluate(ast, record, { blankAsZero: blankEl.checked });
+    const { results, chosen } = window.SFEvaluator.evaluate(ast, record, { blankAsZero: blankEl.checked });
     const nodeById = new Map();
     (function index(n) {
       nodeById.set(n.id, n);
       childrenOf(n).forEach(index);
     })(ast);
-    current = { src, results, nodeById };
+    current = { src, results, nodeById, chosen };
 
     renderFinal(ast, results);
-    renderFormula(src, ast, results);
-    renderTree(src, ast, results);
+    renderFormula(src, ast, results, chosen);
+    renderTree(src, ast, results, chosen);
     renderSoql(ast);
   }
 
@@ -130,7 +130,7 @@
     formulaView.textContent = formulaEl.value;
     treeView.textContent = '';
     soqlCard.hidden = true;
-    current = { src: formulaEl.value, results: new Map(), nodeById: new Map() };
+    current = { src: formulaEl.value, results: new Map(), nodeById: new Map(), chosen: new Set() };
   }
 
   function showError(msg) {
@@ -207,14 +207,14 @@
 
   // ---------- annotated formula ----------
 
-  function renderFormula(src, ast, results) {
+  function renderFormula(src, ast, results, chosen) {
     formulaView.innerHTML = '';
     formulaView.append(document.createTextNode(src.slice(0, ast.start)));
-    formulaView.append(renderNode(ast, src, results));
+    formulaView.append(renderNode(ast, src, results, chosen));
     formulaView.append(document.createTextNode(src.slice(ast.end)));
   }
 
-  function renderNode(node, src, results) {
+  function renderNode(node, src, results, chosen) {
     const span = document.createElement('span');
     span.className = 'node';
     span.dataset.id = node.id;
@@ -226,10 +226,11 @@
         span.classList.add(res.value.value ? 'bool-true' : 'bool-false');
       }
     }
+    if (chosen.has(node.id)) span.classList.add('chosen');
     let cursor = node.start;
     for (const child of childrenOf(node)) {
       if (child.start > cursor) span.append(document.createTextNode(src.slice(cursor, child.start)));
-      span.append(renderNode(child, src, results));
+      span.append(renderNode(child, src, results, chosen));
       cursor = child.end;
     }
     if (cursor < node.end) span.append(document.createTextNode(src.slice(cursor, node.end)));
@@ -255,7 +256,7 @@
     return s.length > 80 ? s.slice(0, 77) + '…' : s;
   }
 
-  function renderTree(src, ast, results) {
+  function renderTree(src, ast, results, chosen) {
     treeView.innerHTML = '';
     (function addRows(node, depth) {
       // Literals are self-evident; skip them to keep the tree readable.
@@ -284,6 +285,12 @@
         }
 
         row.append(snip, badge);
+        if (chosen.has(node.id)) {
+          const pick = document.createElement('span');
+          pick.className = 'badge badge-chosen';
+          pick.textContent = '✓ chosen';
+          row.append(pick);
+        }
         row.addEventListener('mouseenter', () => setHighlight(node.id, true));
         row.addEventListener('mouseleave', () => setHighlight(node.id, false));
         treeView.append(row);
@@ -374,7 +381,14 @@
       type.textContent = V.typeName(res.value);
       val.append(type, document.createTextNode(' ' + truncate(V.display(res.value), 160)));
     }
-    tooltip.append(val);
+    if (current.chosen.has(id)) {
+      const pick = document.createElement('div');
+      pick.className = 'tt-chosen';
+      pick.textContent = '✓ chosen branch';
+      tooltip.append(val, pick);
+    } else {
+      tooltip.append(val);
+    }
     tooltip.hidden = false;
   }
 
