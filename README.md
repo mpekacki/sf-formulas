@@ -35,6 +35,9 @@ To run the engine smoke tests: `node tests/smoke.js`
   button. Fields are deduped case-insensitively in order of first appearance;
   `$User`-style globals are excluded since they aren't queryable columns.
 - Inputs persist in `localStorage`.
+- **Built-in examples** — the "Load example…" dropdown has one showcase
+  formula per return type (all sharing the same record), defined in
+  `js/examples.js` and covered by the test suite.
 
 ## Formula language support
 

@@ -18,32 +18,11 @@
   const soqlView = $('soqlView');
 
   const LS_KEY = 'sf-formula-eval';
+  const EXAMPLES = window.SFExamples;
+  const EXAMPLE_RECORD = JSON.stringify(EXAMPLES.record, null, 2);
   const DEFAULTS = {
-    record: JSON.stringify({
-      Name: 'Acme Renewal Q3',
-      StageName: 'Negotiation',
-      Amount: 48500,
-      Discount__c: null,
-      CloseDate: '2026-07-15',
-      Account: {
-        Name: 'Acme Corp',
-        Rating: 'Hot',
-        Parent: null
-      },
-      Owner: { LastName: 'Doe' }
-    }, null, 2),
-    formula: `/* Opportunity health check */
-IF(
-  ISPICKVAL(StageName, "Closed Won") OR ISPICKVAL(StageName, "Closed Lost"),
-  "Closed out: " & StageName,
-  CASE(Account.Rating, "Hot", "[HOT] ", "Cold", "[cold] ", "")
-    & Account.Name
-    & " - $" & TEXT(ROUND(BLANKVALUE(Discount__c, 0.05) * Amount, 0)) & " discount, "
-    & IF(DATEVALUE(CloseDate) - TODAY() < 30,
-         "closing in under 30 days! Call " & UPPER(Owner.LastName),
-         "on track (" & TEXT(DATEVALUE(CloseDate) - TODAY()) & " days left)")
-    & IF(ISBLANK(Account.Parent.Name), "", " [subsidiary]")
-)`,
+    record: EXAMPLE_RECORD,
+    formula: EXAMPLES.formulas.Text,
     rettype: 'Text',
     blankzero: true
   };
@@ -419,11 +398,20 @@ IF(
   formulaEl.addEventListener('input', schedule);
   typeEl.addEventListener('change', run);
   blankEl.addEventListener('change', run);
-  $('reset').addEventListener('click', () => {
-    recordEl.value = DEFAULTS.record;
-    formulaEl.value = DEFAULTS.formula;
-    typeEl.value = DEFAULTS.rettype;
-    blankEl.checked = DEFAULTS.blankzero;
+  const exampleEl = $('example');
+  Object.keys(EXAMPLES.formulas).forEach(t => {
+    const o = document.createElement('option');
+    o.value = t;
+    o.textContent = t;
+    exampleEl.append(o);
+  });
+  exampleEl.addEventListener('change', () => {
+    const t = exampleEl.value;
+    if (!t) return;
+    exampleEl.value = ''; // back to the "Load example…" placeholder
+    recordEl.value = EXAMPLE_RECORD;
+    formulaEl.value = EXAMPLES.formulas[t];
+    typeEl.value = t;
     run();
   });
 
