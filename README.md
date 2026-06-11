@@ -26,6 +26,10 @@ To run the engine smoke tests: `node tests/smoke.js`
   exact subexpression that failed, with ancestors dimmed.
 - **Blank handling toggle** — "treat blank fields as zeroes" vs. blank-as-blank,
   mirroring the Salesforce formula option.
+- **SOQL query generator** — builds `SELECT <every field the formula
+  references> FROM ` (object name unknown, so it ends at `FROM`) with a copy
+  button. Fields are deduped case-insensitively in order of first appearance;
+  `$User`-style globals are excluded since they aren't queryable columns.
 - Inputs persist in `localStorage`.
 
 ## Formula language support
@@ -52,7 +56,10 @@ Lenient extras beyond strict Salesforce syntax: `==` / `!=` aliases and infix
   literal dotted key (`"Account.Name": "Acme"`). `$User`-style globals can be
   provided the same way (`"$User": { "Id": "..." }`).
 - A field referenced by the formula but missing from the JSON is an error (so
-  typos surface) — add it with `null` to model a blank field.
+  typos surface) — add it with `null` to model a blank field. A `null`
+  relation (`{"Account": null}`) makes every field reached through it blank
+  (`Account.IsPublic`, `Account.Parent.Name`, …), matching Salesforce's
+  null-lookup behavior.
 - Dates are handled in UTC; text comparison is case-sensitive (matching
   Salesforce formula semantics, unlike SOQL).
 - `FLOOR`/`CEILING` round toward/away from zero like Salesforce;

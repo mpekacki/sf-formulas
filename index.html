@@ -40,6 +40,14 @@
       </div>
     </div>
 
+    <div class="card" id="soqlCard" hidden>
+      <div class="card-title">SOQL query <span class="hint-inline">all fields referenced by the formula</span></div>
+      <div class="soql-row">
+        <pre id="soqlView" class="soql-view"></pre>
+        <button id="soqlCopy" type="button">Copy</button>
+      </div>
+    </div>
+
     <details class="card">
       <summary>Supported functions &amp; operators</summary>
       <p class="hint">Operators: <code>+ - * / ^ &amp;</code> (concat) <code>= == != &lt;&gt; &lt; &lt;= &gt; &gt;= &amp;&amp; || !</code>, plus infix <code>AND OR NOT</code> keywords. <code>/* comments */</code> are supported.</p>

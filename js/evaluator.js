@@ -61,8 +61,12 @@
       if (Object.prototype.hasOwnProperty.call(record, path)) {
         cur = record[path];
       } else {
-        for (const part of path.split('.')) {
-          const key = (cur !== null && typeof cur === 'object' && !Array.isArray(cur)) ? findKey(cur, part) : undefined;
+        const parts = path.split('.');
+        for (let i = 0; i < parts.length; i++) {
+          // A null relation mid-path (e.g. {"Account": null} for Account.IsPublic)
+          // means every field reached through it is blank, like in Salesforce.
+          if (i > 0 && (cur === null || cur === undefined)) return V.NULL;
+          const key = (cur !== null && typeof cur === 'object' && !Array.isArray(cur)) ? findKey(cur, parts[i]) : undefined;
           if (key === undefined) {
             throw new Error(`Field "${path}" is not in the record JSON. Add it to the record (use null for a blank value).`);
           }

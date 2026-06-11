@@ -281,6 +281,27 @@ details summary {
 .badge-err { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
 .badge-err.dim, .badge-skip { background: #f3f4f6; color: #9ca3af; border-color: #e5e7eb; }
 
+/* ---------- SOQL ---------- */
+
+.soql-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.soql-view {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 10px 12px;
+  background: #fbfbfe;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: var(--mono);
+  font-size: 13px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 /* ---------- tooltip ---------- */
 
 .tooltip {

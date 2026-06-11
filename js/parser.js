@@ -138,5 +138,24 @@
     }
   }
 
-  window.SFParser = { parse, childrenOf };
+  // All record fields referenced by the formula, deduped case-insensitively,
+  // in order of first appearance. Skips $-globals ($User.Id etc.) since those
+  // aren't queryable columns.
+  function collectFields(ast) {
+    const seen = new Set();
+    const fields = [];
+    (function walk(node) {
+      if (node.type === 'ident' && !node.name.startsWith('$')) {
+        const key = node.name.toLowerCase();
+        if (!seen.has(key)) {
+          seen.add(key);
+          fields.push(node.name);
+        }
+      }
+      childrenOf(node).forEach(walk);
+    })(ast);
+    return fields;
+  }
+
+  window.SFParser = { parse, childrenOf, collectFields };
 })();

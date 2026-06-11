@@ -2,7 +2,7 @@
 // (final result, annotated formula with hover tooltips, evaluation tree).
 (function () {
   const V = window.SFValues;
-  const { parse, childrenOf } = window.SFParser;
+  const { parse, childrenOf, collectFields } = window.SFParser;
   const $ = id => document.getElementById(id);
 
   const recordEl = $('record');
@@ -14,6 +14,8 @@
   const formulaView = $('formulaView');
   const treeView = $('treeView');
   const tooltip = $('tooltip');
+  const soqlCard = $('soqlCard');
+  const soqlView = $('soqlView');
 
   const LS_KEY = 'sf-formula-eval';
   const DEFAULTS = {
@@ -93,6 +95,7 @@
       finalEl.className = 'final';
       finalEl.textContent = '—';
       treeView.textContent = '';
+      soqlCard.hidden = true;
       current = { src, results: new Map(), nodeById: new Map() };
       return;
     }
@@ -108,6 +111,17 @@
     renderFinal(ast, results);
     renderFormula(src, ast, results);
     renderTree(src, ast, results);
+    renderSoql(ast);
+  }
+
+  function renderSoql(ast) {
+    const fields = collectFields(ast);
+    if (fields.length === 0) {
+      soqlCard.hidden = true;
+      return;
+    }
+    soqlView.textContent = `SELECT ${fields.join(', ')} FROM `;
+    soqlCard.hidden = false;
   }
 
   function clearResults(msg) {
@@ -115,6 +129,7 @@
     finalEl.textContent = msg || '—';
     formulaView.textContent = formulaEl.value;
     treeView.textContent = '';
+    soqlCard.hidden = true;
     current = { src: formulaEl.value, results: new Map(), nodeById: new Map() };
   }
 
@@ -381,6 +396,23 @@
     typeEl.value = DEFAULTS.rettype;
     blankEl.checked = DEFAULTS.blankzero;
     run();
+  });
+
+  $('soqlCopy').addEventListener('click', async () => {
+    const btn = $('soqlCopy');
+    try {
+      await navigator.clipboard.writeText(soqlView.textContent);
+      btn.textContent = 'Copied!';
+    } catch (e) {
+      // Clipboard API is unavailable on file:// in some browsers — select the text instead.
+      const range = document.createRange();
+      range.selectNodeContents(soqlView);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      btn.textContent = 'Press Ctrl+C';
+    }
+    setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
   });
 
   $('fnlist').textContent = Object.keys(window.SFFunctions).sort().map(n => n + '()').join('  ');

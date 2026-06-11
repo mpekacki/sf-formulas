@@ -19,7 +19,8 @@ const record = {
   CloseDate: '2026-07-15',
   IsActive__c: true,
   Missing__c: null,
-  Account: { Name: 'Acme' }
+  Account: { Name: 'Acme', Parent: null },
+  Manager: null
 };
 
 let failures = 0;
@@ -100,6 +101,13 @@ check('ISPICKVAL(StageName, "Closed Won")', true);
 check('Account.Name = "Acme"', true);
 check('Nope__c > 1', 'ERROR'); // unknown field
 
+// null relations: all fields through them are blank, not errors
+check('ISBLANK(Manager.Email)', true);
+check('Manager.IsPublic = TRUE', false); // blank checkbox is false
+check('Manager.IsPublic = FALSE', true);
+check('ISBLANK(Account.Parent.Name)', true); // null relation deeper in the path
+check('Bogus.Email', 'ERROR'); // relation itself absent is still an error
+
 // dates (CloseDate is a text field coerced in date context)
 check('YEAR(DATEVALUE("2026-06-11"))', 2026);
 check('DATE(2026, 2, 30)', 'ERROR');
@@ -128,6 +136,21 @@ check('Revenue__c < 0 || Bogus__c > 1', 'ERROR');
   } else {
     failures++;
     console.log('FAIL  sub-results of OR', left, right);
+  }
+}
+
+// SOQL field collection: deduped (case-insensitive), first-appearance order, $-globals skipped
+{
+  const ast = ctx.SFParser.parse(
+    'IF(Revenue__c > 0 OR contains(TEXT(StageName), Name), Account.Name & TEXT(REVENUE__C), $User.Id)');
+  const fields = ctx.SFParser.collectFields(ast);
+  const soql = `SELECT ${fields.join(', ')} FROM `;
+  const expected = 'SELECT Revenue__c, StageName, Name, Account.Name FROM ';
+  if (soql === expected) {
+    console.log(`ok    collectFields => ${soql}`);
+  } else {
+    failures++;
+    console.log(`FAIL  collectFields\n      expected ${JSON.stringify(expected)}, got ${JSON.stringify(soql)}`);
   }
 }
 
