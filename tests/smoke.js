@@ -180,6 +180,42 @@ check('Revenue__c < 0 || Bogus__c > 1', 'ERROR');
   }
 }
 
+// the default showcase example from app.js must always evaluate cleanly
+{
+  const exampleRecord = {
+    Name: 'Acme Renewal Q3',
+    StageName: 'Negotiation',
+    Amount: 48500,
+    Discount__c: null,
+    CloseDate: '2026-07-15',
+    Account: { Name: 'Acme Corp', Rating: 'Hot', Parent: null },
+    Owner: { LastName: 'Doe' }
+  };
+  const exampleFormula = `/* Opportunity health check */
+IF(
+  ISPICKVAL(StageName, "Closed Won") OR ISPICKVAL(StageName, "Closed Lost"),
+  "Closed out: " & StageName,
+  CASE(Account.Rating, "Hot", "[HOT] ", "Cold", "[cold] ", "")
+    & Account.Name
+    & " - $" & TEXT(ROUND(BLANKVALUE(Discount__c, 0.05) * Amount, 0)) & " discount, "
+    & IF(DATEVALUE(CloseDate) - TODAY() < 30,
+         "closing in under 30 days! Call " & UPPER(Owner.LastName),
+         "on track (" & TEXT(DATEVALUE(CloseDate) - TODAY()) & " days left)")
+    & IF(ISBLANK(Account.Parent.Name), "", " [subsidiary]")
+)`;
+  const ast = ctx.SFParser.parse(exampleFormula);
+  const { results } = ctx.SFEvaluator.evaluate(ast, exampleRecord, { blankAsZero: true });
+  const root = results.get(ast.id);
+  // The tail depends on TODAY(), so only assert the stable prefix.
+  const prefix = '[HOT] Acme Corp - $2425 discount, ';
+  if (!root.error && root.value.type === 'text' && root.value.value.startsWith(prefix)) {
+    console.log(`ok    default example => ${JSON.stringify(root.value.value)}`);
+  } else {
+    failures++;
+    console.log('FAIL  default example', root);
+  }
+}
+
 // parse errors carry positions
 try {
   ctx.SFParser.parse('1 + ');
