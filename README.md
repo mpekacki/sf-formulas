@@ -19,10 +19,10 @@ To run the engine smoke tests: `node tests/smoke.js`
   Hovering any part shows its type and computed value.
 - **Evaluation tree** — every subexpression listed with its value, hover to
   cross-highlight with the formula view.
-- **Chosen-branch highlighting** — the branch actually picked by `IF`, `CASE`,
-  `BLANKVALUE` or `NULLVALUE` is tinted amber in the formula view and tagged
-  "✓ chosen" in the tooltip and tree, so for
-  `IF(Name == "ACME", "foo", "bar")` you see at a glance which result won.
+- **Chosen-branch tracking** — the branch actually picked by `IF`, `CASE`,
+  `BLANKVALUE` or `NULLVALUE` is tagged "✓ chosen" in the evaluation tree and
+  in the hover tooltip, so for `IF(Name == "ACME", "foo", "bar")` you can see
+  which result won.
 - **Return type picker** (Checkbox, Currency, Date, Date/Time, Number,
   Percent, Text) with a warning when the formula's actual type doesn't match.
 - **Error pinpointing** — parse errors highlight the offending characters;

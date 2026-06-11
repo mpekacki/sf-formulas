@@ -125,7 +125,7 @@ IF(
     current = { src, results, nodeById, chosen };
 
     renderFinal(ast, results);
-    renderFormula(src, ast, results, chosen);
+    renderFormula(src, ast, results);
     renderTree(src, ast, results, chosen);
     renderSoql(ast);
   }
@@ -223,14 +223,14 @@ IF(
 
   // ---------- annotated formula ----------
 
-  function renderFormula(src, ast, results, chosen) {
+  function renderFormula(src, ast, results) {
     formulaView.innerHTML = '';
     formulaView.append(document.createTextNode(src.slice(0, ast.start)));
-    formulaView.append(renderNode(ast, src, results, chosen));
+    formulaView.append(renderNode(ast, src, results));
     formulaView.append(document.createTextNode(src.slice(ast.end)));
   }
 
-  function renderNode(node, src, results, chosen) {
+  function renderNode(node, src, results) {
     const span = document.createElement('span');
     span.className = 'node';
     span.dataset.id = node.id;
@@ -242,11 +242,10 @@ IF(
         span.classList.add(res.value.value ? 'bool-true' : 'bool-false');
       }
     }
-    if (chosen.has(node.id)) span.classList.add('chosen');
     let cursor = node.start;
     for (const child of childrenOf(node)) {
       if (child.start > cursor) span.append(document.createTextNode(src.slice(cursor, child.start)));
-      span.append(renderNode(child, src, results, chosen));
+      span.append(renderNode(child, src, results));
       cursor = child.end;
     }
     if (cursor < node.end) span.append(document.createTextNode(src.slice(cursor, node.end)));
