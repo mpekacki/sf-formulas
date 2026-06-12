@@ -8,6 +8,7 @@
 
   function evaluate(ast, record, opts) {
     const blankAsZero = !!(opts && opts.blankAsZero);
+    const missingAsBlank = !!(opts && opts.missingAsBlank);
     const omni = !!(opts && opts.mode === 'omni');
     const registry = omni ? window.SFOmniFunctions : window.SFFunctions;
     const results = new Map();
@@ -38,7 +39,7 @@
       }
     }
 
-    const env = { eval: evalNode, evalSafe, blankAsZero, omni, markChosen: node => chosen.add(node.id) };
+    const env = { eval: evalNode, evalSafe, blankAsZero, missingAsBlank, omni, markChosen: node => chosen.add(node.id) };
 
     function compute(node) {
       switch (node.type) {
@@ -68,6 +69,7 @@
       const parts = path.split(omni ? /[.:]/ : '.');
       const out = walkPath(record, parts, 0);
       if (out === MISSING) {
+        if (missingAsBlank) return V.NULL;
         throw new Error(`Field "${path}" is not in the record JSON. Add it to the record (use null for a blank value).`);
       }
       return infer(out, path);

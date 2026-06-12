@@ -10,6 +10,7 @@
   const typeEl = $('rettype');
   const modeEl = $('mode');
   const blankEl = $('blankzero');
+  const missingEl = $('missingblank');
   const errorsEl = $('errors');
   const finalEl = $('final');
   const formulaView = $('formulaView');
@@ -43,6 +44,7 @@
     if (!typeEl.value) typeEl.value = DEFAULTS.rettype;
     modeEl.value = s.mode === 'omni' ? 'omni' : 'standard';
     blankEl.checked = typeof s.blankzero === 'boolean' ? s.blankzero : DEFAULTS.blankzero;
+    missingEl.checked = s.missingblank === true; // off by default
   }
 
   function saveState() {
@@ -52,7 +54,8 @@
         formula: formulaEl.value,
         rettype: typeEl.value,
         mode: modeEl.value,
-        blankzero: blankEl.checked
+        blankzero: blankEl.checked,
+        missingblank: missingEl.checked
       }));
     } catch (e) { /* storage full/blocked — fine */ }
   }
@@ -104,6 +107,7 @@
 
     const { results, chosen } = window.SFEvaluator.evaluate(ast, record, {
       blankAsZero: blankEl.checked,
+      missingAsBlank: missingEl.checked,
       mode: omni ? 'omni' : 'standard'
     });
     const nodeById = new Map();
@@ -410,6 +414,7 @@
   typeEl.addEventListener('change', run);
   modeEl.addEventListener('change', run);
   blankEl.addEventListener('change', run);
+  missingEl.addEventListener('change', run);
   const exampleEl = $('example');
   EXAMPLES.forEach(ex => {
     const o = document.createElement('option');

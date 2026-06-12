@@ -126,6 +126,14 @@ check('Missing__c + 1', null, { blankAsZero: false });
 check('Missing__c = 0', true, { blankAsZero: true });
 check('Missing__c = 0', false, { blankAsZero: false });
 
+// missing-fields-as-blank option (off by default, errors tested above)
+const MAB = { blankAsZero: true, missingAsBlank: true };
+check('ISBLANK(Nope__c)', true, MAB);
+check('Nope__c > 1', false, MAB);
+check('BLANKVALUE(Nope__c, 5)', 5, MAB);
+check('Bogus.Email & "!"', '!', MAB); // whole missing relation is blank too
+check('Nope__c + 1', null, { blankAsZero: false, missingAsBlank: true });
+
 // error short-circuit: OR is true even though the right side errors
 check('Revenue__c > 0 || Bogus__c > 1', true);
 check('Revenue__c < 0 || Bogus__c > 1', 'ERROR');

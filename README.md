@@ -104,7 +104,9 @@ GMT/UTC aren't supported.
   literal dotted key (`"Account.Name": "Acme"`). `$User`-style globals can be
   provided the same way (`"$User": { "Id": "..." }`).
 - A field referenced by the formula but missing from the JSON is an error (so
-  typos surface) — add it with `null` to model a blank field. A `null`
+  typos surface) — add it with `null` to model a blank field, or turn on
+  "Treat missing fields as blank" to have every absent field evaluate as
+  blank instead. A `null`
   relation (`{"Account": null}`) makes every field reached through it blank
   (`Account.IsPublic`, `Account.Parent.Name`, …), matching Salesforce's
   null-lookup behavior.

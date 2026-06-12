@@ -308,7 +308,11 @@
     const out = [];
     for (const item of a[0].value) {
       if (item === null || typeof item !== 'object' || Array.isArray(item)) continue;
-      const { results } = window.SFEvaluator.evaluate(ast, item, { mode: 'omni', blankAsZero: env.blankAsZero });
+      const { results } = window.SFEvaluator.evaluate(ast, item, {
+        mode: 'omni',
+        blankAsZero: env.blankAsZero,
+        missingAsBlank: env.missingAsBlank
+      });
       const r = results.get(ast.id);
       // Items the condition can't be evaluated against are excluded.
       if (!r.error && r.value.type === 'boolean' && r.value.value) out.push(item);
