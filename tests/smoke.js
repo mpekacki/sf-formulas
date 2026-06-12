@@ -262,6 +262,14 @@ omniCheck('"ABC" NOTLIKE "A"', false);
 omniCheck('1 == "1"', true); // loose typing
 omniCheck('InputDate < "2000-01-01"', true); // text dates compare as dates
 
+// AND()/OR()/NOT() function forms (not in the docs, but the runtime has them)
+omniCheck('AND(Color == "Red", SUM(Items:Amount) > 500)', true);
+omniCheck('AND(Color == "Red", SUM(Items:Amount) > 999)', false);
+omniCheck('OR(Color == "Blue", "ABC" LIKE "B")', true);
+omniCheck('OR(false, Bogus > 1)', 'ERROR'); // no true arg, so the error surfaces
+omniCheck('OR(true, Bogus > 1)', true); // short-circuits past the error
+omniCheck('NOT(Color ~= "RED")', false);
+
 // merge fields & colon paths
 omniCheck('IF(%Color% == "Red", "Black", %Color%)', 'Black');
 omniCheck('Customer:FirstName', 'Ada');

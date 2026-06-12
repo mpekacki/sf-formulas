@@ -78,7 +78,9 @@ values — paths map over arrays (`Items:Amount` → `[100, 250, 400]`), feeding
 string is parsed and evaluated per item), `SORTBY`, `LISTMERGE`,
 `LISTMERGEPRIMARY` and `VALUELOOKUP`.
 
-Other functions: `IF`, `ISBLANK`, `ISNOTBLANK`, `CONCAT`, `SUBSTRING` (with
+Other functions: `IF`, `AND` / `OR` / `NOT` (function forms — not in the
+managed-package docs, but the runtime supports them), `ISBLANK`,
+`ISNOTBLANK`, `CONCAT`, `SUBSTRING` (with
 search-string indexes), `STRINGINDEXOF`, `MAXSTRING`, `TOSTRING`,
 `SERIALIZE` / `DESERIALIZE` / `RESERIALIZE`, `BASE64ENCODE`, `BASEURL`,
 `GENERATEGLOBALKEY`, `ROUND` (default 2 decimals + Java RoundingMode

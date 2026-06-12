@@ -179,6 +179,35 @@
     return chosen.value;
   }, { lazy: true });
 
+  // Not in the managed-package function reference, but supported by the runtime.
+  def('AND', 1, Infinity, (nodes, env) => {
+    let anyFalse = false;
+    let firstErr = null;
+    for (const n of nodes) {
+      const r = env.evalSafe(n);
+      if (r.error) { if (!firstErr) firstErr = r.error; continue; }
+      if (!V.toBoolean(r.value)) anyFalse = true;
+    }
+    if (anyFalse) return V.boolean(false); // short-circuit past errors
+    if (firstErr) throw firstErr;
+    return V.boolean(true);
+  }, { lazy: true });
+
+  def('OR', 1, Infinity, (nodes, env) => {
+    let anyTrue = false;
+    let firstErr = null;
+    for (const n of nodes) {
+      const r = env.evalSafe(n);
+      if (r.error) { if (!firstErr) firstErr = r.error; continue; }
+      if (V.toBoolean(r.value)) anyTrue = true;
+    }
+    if (anyTrue) return V.boolean(true);
+    if (firstErr) throw firstErr;
+    return V.boolean(false);
+  }, { lazy: true });
+
+  def('NOT', 1, 1, a => V.boolean(!V.toBoolean(a[0])));
+
   def('ISBLANK', 1, 1, a => V.boolean(V.isBlank(a[0])));
   def('ISNOTBLANK', 1, 1, a => V.boolean(!V.isBlank(a[0])));
 
